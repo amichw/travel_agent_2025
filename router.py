@@ -1,6 +1,6 @@
-import json
+# router.py
 from llm_client import LLMClient
-
+from prompts import ROUTER_PROMPT
 
 class IntentRouter:
     def __init__(self, client: LLMClient):
@@ -8,39 +8,31 @@ class IntentRouter:
 
     def determine_intent(self, user_input: str) -> dict:
         """
-        Analyzes the user input to decide which tool (if any) to use.
-        Returns a dictionary with 'tool' and 'location'.
-        """
-
-        # 1. The Router Prompt
-        # We give the LLM strict instructions on how to categorize inputs.
-        system_instruction = """
-        You are a Router for a travel assistant. Analyze the user's query.
-
-        Available Tools:
-        1. "weather": Use for current conditions, rain check, packing for specific weather.
-        2. "attractions": Use for "what to do", "places to visit", "sightseeing".
-        3. "chat": Use for greetings, history, general advice, or if no location is specified.
-
-        Output Instructions:
-        - Return strictly valid JSON.
-        - Format: {"tool": "tool_name", "location": "city_name_or_null"}
-        - If the user doesn't mention a specific city, use "chat".
+        The router MUST always call the LLM in JSON mode
+        and MUST NOT stream under any circumstances.
         """
 
         messages = [
-            {"role": "system", "content": system_instruction},
+            {"role": "system", "content": ROUTER_PROMPT},
             {"role": "user", "content": user_input}
         ]
 
-        # 2. Call LLM in JSON Mode
-        # We use the client we built in Component 1
         try:
-            response_dict = self.client.chat(messages, json_mode=True)
-            return response_dict
+            result = self.client.chat(
+                messages,
+                json_mode=True,       # ALWAYS JSON
+                stream=False,         # NEVER STREAM
+                temperature=0         # Deterministic
+            )
+
+            # Ensure valid structure
+            if isinstance(result, dict):
+                return result
+            else:
+                return {"tool": "chat", "location": None}
+
         except Exception as e:
-            print(f"⚠️ Router Error: {e}")
-            # Default fallback if JSON parsing fails
+            print(f"[Router Error]: {e}")
             return {"tool": "chat", "location": None}
 
 
