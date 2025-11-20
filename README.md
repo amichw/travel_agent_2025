@@ -1,79 +1,99 @@
-# Voyager — AI Travel Assistant (LLM Project)
+ Voyager — Travel Assistant (LLM Project)
 
-A conversation-first AI travel assistant designed to showcase:
-
-✔ Prompt engineering  
-✔ Multi-turn context  
-✔ Tool integration (weather + attractions)  
-✔ Intent routing  
-✔ Reflection-based hallucination checking  
-✔ Clean LLM architecture  
-
----
+Voyager is a conversation-first travel assistant built to demonstrate effective LLM prompt design, intent routing, tool integration, and contextual dialogue management. The system maintains natural multi-turn conversations while blending external data such as weather and attraction information.
 
 ## Features
+- Natural, travel-focused conversation flow  
+- Intent router (weather / attractions / general travel chat) powered by JSON-mode LLM  
+- External tools: live weather API + attraction lookup  
+- Structured system prompts with hidden CoT reasoning  
+- Full conversation context handling with sliding window memory  
+- Hallucination-mitigation layer via reflection pass  
+- Full event logging of the reasoning+tool pipeline for later analysis  
 
-### 🔹 Advanced Prompt Engineering
-- Centralized prompts (`prompts.py`)
-- Hidden chain-of-thought
-- Reflection layer
-- Anti-hallucination protections
+## Running the Assistant
+```
+export GROQ_TRAVEL_API_KEY="..."
+export OPENWEATHER_API_KEY="..."
+python assistant.py
+```
 
-### 🔹 External Tooling
-- Weather API (OpenWeather)
-- Simple Attractions tool (mock or extendable)
-- Automatic tool selection via LLM router
-
-### 🔹 Robust Architecture
-- StateManager → conversation memory  
-- IntentRouter → deterministic action selection  
-- LLMClient → Groq API wrapper  
-- TravelAssistant → business orchestration  
-
----
-
-## Run the Assistant
-
-export GROQ_TRAVEL_API_KEY="YOUR_KEY"
-export OPENWEATHER_API_KEY="YOUR_KEY" 
-
----
-
-## Sample Conversation
-
-**You:** "Is it raining in Tokyo right now?"  
-**Voyager:** "Right now Tokyo is 22°C and partly cloudy. Are you planning an outdoor activity?"
-
----
+## Testing
+A dedicated test harness simulates 10 conversations and logs full traces.  
+Optional LLM analysis evaluates:
+- conversation quality  
+- domain adherence  
+- hallucination risk  
+- improvement suggestions  
 
 ## Project Structure
+```
+assistant.py        – orchestration loop + streaming
+llm_client.py       – Groq wrapper with JSON-safe routing
+router.py           – intent classification via LLM
+state_manager.py    – multi-turn context memory
+tools.py            – weather + attractions tools
+prompts.py          – system, CoT, router, reflection prompts
+reflection.py       – hallucination mitigation
+utils.py            – logger + formatting helpers
+test_conversations.py – simulations + analysis
+```
 
-assistant.py
-llm_client.py
-router.py
-state_manager.py
-tools.py
-prompts.py
-reflection.py
-utils.py
-README.md
+## Visual Architecture Diagram
 
----
+```
+                          ┌────────────────────────┐
+                          │        User Input       │
+                          └─────────────┬──────────┘
+                                        │
+                                        ▼
+                          ┌────────────────────────┐
+                          │     TravelAssistant     │
+                          │  (Main Orchestrator)   │
+                          └─────────────┬──────────┘
+                                        │
+           ┌────────────────────────────┼────────────────────────────┐
+           ▼                            ▼                            ▼
+ ┌──────────────────┐        ┌──────────────────┐        ┌──────────────────┐
+ │  StateManager     │        │   IntentRouter   │        │    EventLogger   │
+ │ (conversation mem)│        │ (weather/POI/chat)│       │ (full trace log) │
+ └─────────┬────────┘        └──────────┬────────┘        └──────────┬──────┘
+           │                             │                            │
+           │                             ▼                            │
+           ▼                 ┌──────────────────────┐                  ▼
+ ┌──────────────────┐        │ LLMClient (Groq API) │        ┌──────────────────┐
+ │  prompts.py       │       └──────────┬───────────┘        │ reflection.py     │
+ │ (System,CoT,Router)│                │                     │ (hallucination fix)│
+ └──────────────────┘                  │                     └──────────────────┘
+                                        ▼
+                          ┌────────────────────────┐
+                          │    Final Assistant      │
+                          │       Response          │
+                          └────────────────────────┘
+```
 
-## Why This Project Stands Out
+## Short Notes on Key Prompt Engineering Decisions
 
-- Clean, modular LLM design  
-- Demonstrates real-world LLM engineering  
-- Avoids hallucinations using reflection  
-- Deterministic routing using JSON LLM tool  
-- Multi-turn conversation with context  
+1. **Strict but natural travel-domain persona**  
+   The system prompt constrains the assistant to travel topics while keeping replies natural and friendly. Ambiguous messages are interpreted in travel context.
 
----
+2. **Hidden Chain-of-Thought**  
+   Included only as a system instruction to improve internal reasoning.
 
-## Extendable
+3. **LLM Router With Few-Shot Examples**  
+   Makes routing accurate and deterministic.
 
-Ideas:
-- Add currency conversion  
-- Add hotel recommendations  
-- Connect OpenTripMap  
-- Add user preference memory  
+4. **Structured Tool Context Injection**  
+   Wrapping tool data in `<tool_context>` ensures grounded responses.
+
+5. **Reflection Pass**  
+   A separate model pass reviews and corrects potential hallucinations.
+
+6. **Context Management**  
+   Sliding-window memory balances coherence and token efficiency.
+
+7. **Error Handling Philosophy**  
+   - Router fallback to chat  
+   - Mock data when APIs fail  
+   - Clarifying questions over guessing  
+   - Full event logging at each step
