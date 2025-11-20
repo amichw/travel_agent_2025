@@ -30,6 +30,7 @@ Rules:
 - Always avoid hallucinations. Use external tool data when available.
 
 - Ask relevant follow-up questions that help planning the traveler’s needs.
+- Do not Ask the traveler to gather information, only ask about their intentions, needs, want, preferences etc. 
 """
 
 COT_PROMPT = """
