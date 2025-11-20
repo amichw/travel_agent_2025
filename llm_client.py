@@ -1,7 +1,8 @@
-# llm_client.py
 import os
 import json
+from types import GeneratorType
 from groq import Groq
+
 
 class LLMClient:
     def __init__(self):
@@ -15,11 +16,12 @@ class LLMClient:
     def chat(self, messages, stream=False, json_mode=False, temperature=0):
         """
         Wrapper for Groq chat completion.
-        JSON mode is *always* non-streaming.
-        Streaming is only allowed for normal chat.
+        - JSON mode ALWAYS disables streaming.
+        - stream=True returns a generator only for main assistant responses.
+        - stream=False ALWAYS returns a final string.
         """
 
-        # JSON mode MUST disable streaming to avoid generator errors
+        # JSON mode MUST disable streaming
         if json_mode:
             stream = False
 
@@ -35,21 +37,41 @@ class LLMClient:
 
         completion = self.client.chat.completions.create(**params)
 
-        # STREAM MODE (only allowed when json_mode=False)
+        # -----------------------------------------------------------
+        # STREAMING MODE (normal assistant responses)
+        # -----------------------------------------------------------
         if stream:
+            # Return a clean generator for streaming
+            def generator():
+                for chunk in completion:
+                    delta = chunk.choices[0].delta.content
+                    if delta:
+                        yield delta
+            return generator()
+
+        # -----------------------------------------------------------
+        # NON-STREAM MODE
+        # But Groq sometimes returns a generator anyway → handle it!
+        # -----------------------------------------------------------
+        if isinstance(completion, GeneratorType):
+            # Unexpected generator → consume fully
+            text = ""
             for chunk in completion:
                 delta = chunk.choices[0].delta.content
                 if delta:
-                    yield delta
-            return  # generator mode
+                    text += delta
+            return text
 
-        # NON-STREAM MODE
+        # Normal response object
         content = completion.choices[0].message.content
 
+        # -----------------------------------------------------------
+        # JSON MODE PARSING
+        # -----------------------------------------------------------
         if json_mode:
             try:
                 return json.loads(content)
             except Exception:
                 return {}
-        else:
-            return content
+
+        return content
