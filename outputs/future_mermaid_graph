@@ -1,0 +1,54 @@
+graph TD
+    subgraph Conversation Start
+        A[User Message] --> B[LLM Agent Receives Input]
+    end
+
+    subgraph Agent Reasoning & Tool Selection
+        B --> C{Agent Reasoning CoT: Intent, Tools, and Plan Needed?}
+
+        C -->|Intent: Static Visa, Currency| D1[Tool: KB Search Mock RAG]
+        C -->|Intent: Real-time Weather, POI| E1[Tool: Live API Call Weather/Attractions]
+        C -->|Intent: Live Fact/General Info| E2[Tool: Live Web Search]
+        C -->|Intent: Ambiguous or Incomplete| F[Generate Clarifying Question]
+    end
+
+    subgraph Data Augmentation & Execution
+        D1 --> G1{Context Retrieved?}
+        E1 --> L1[Execute Tool: Call Live API]
+        E2 --> L2[Execute Tool: Google Search]
+
+        G1 -->|Yes - RAG Context| H[LLM Generates Grounded Response using Context]
+        G1 -->|No - KB Failure| E2
+
+        L1 --> M1{API Returned Data?}
+        L2 --> M2{Search Data Retrieved?}
+
+        M1 -->|Yes - Tool Context| H
+        M2 -->|Yes - Search Context| H
+
+        M1 -->|No| K[Express Uncertainty and Log Failure]
+        M2 -->|No| K
+    end
+
+    subgraph Response Generation and Verification
+        H --> V[Structured Response Template Markdown, XML Tags]
+        V --> X[Hallucination and Grounding Check Two-Pass LLM]
+        X --> N[Update Session Context and State]
+        F --> N
+        K --> N
+    end
+
+    subgraph Response Delivery and Follow-Up
+        N --> O[LLM Agent Provides Final Response]
+        O --> P{User Satisfied?}
+        P -->|No / Follow-up| B
+        P -->|Yes| Q[End Conversation / Offer Next Steps]
+
+        N -.-> R[Maintain Session State: Goals, Constraints, Pending Tasks]
+        R -.-> B
+    end
+
+    subgraph Error Handling and Maintenance
+        K -.-> S[Log Tool Failure or KB Gap]
+        X -.-> T[Flag Potential Hallucination or KB Gap]
+    end
